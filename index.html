@@ -2,110 +2,72 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>VR Hand Tracking & 3D UI</title>
+    <title>VR Hand Tracking & Movement</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://unpkg.com/super-hands/dist/super-hands.min.js"></script>
-    <script src="https://unpkg.com/aframe-event-set-component@^4.0.0/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component/dist/aframe-environment-component.min.js"></script>
 </head>
 <body>
 
-    <a-scene webxr="optionalFeatures: hand-tracking, hit-test" background="color: #ECECEC">
+    <a-scene webxr="optionalFeatures: hand-tracking, hit-test" 
+             renderer="colorManagement: true; physicallyCorrectLights: true;">
         
-        <a-assets>
-            <img id="sky" src="scene-2.jpg">
-        </a-assets>
+        <a-entity environment="preset: starry; groundColor: #445; grid: none"></a-entity>
 
-        <a-sky src="#sky"></a-sky>
-
-        <a-entity id="control-panel" position="0 1.6 -0.7" rotation="-20 0 0">
-            <a-plane width="1" height="0.4" color="#222" opacity="0.8"></a-plane>
+        <a-entity id="rig" movement-controls="fly: false; speed: 0.1" position="0 0 0">
             
-            <a-entity position="-0.3 0 0.02" class="clickable"
-                      geometry="primitive: box; width: 0.25; height: 0.2; depth: 0.05"
-                      material="color: #4CC3D9"
-                      text="value: ADD BOX; align: center; color: white; width: 2; zOffset: 0.03"
-                      onclick="addShape('box')"
-                      animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.9 0.9 0.9; to: 1 1 1">
+            <a-entity camera position="0 1.6 0" look-controls></a-entity>
+
+            <a-entity id="leftHand" 
+                      hand-tracking-controls="hand: left; modelStyle: mesh"
+                      laser-controls="hand: left"
+                      raycaster="objects: .clickable; far: 2"
+                      line="color: yellow; opacity: 0.5">
             </a-entity>
 
-            <a-entity position="0 0 0.02" class="clickable"
-                      geometry="primitive: box; width: 0.25; height: 0.2; depth: 0.05"
-                      material="color: #EF2D5E"
-                      text="value: ADD SPHERE; align: center; color: white; width: 2; zOffset: 0.03"
-                      onclick="addShape('sphere')"
-                      animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.9 0.9 0.9; to: 1 1 1">
-            </a-entity>
-
-            <a-entity position="0.3 0 0.02" class="clickable"
-                      geometry="primitive: box; width: 0.25; height: 0.2; depth: 0.05"
-                      material="color: #FFC65D"
-                      text="value: CLEAR; align: center; color: black; width: 2; zOffset: 0.03"
-                      onclick="clearLast()"
-                      animation__click="property: scale; startEvents: click; easing: easeInCubic; dur: 150; from: 0.9 0.9 0.9; to: 1 1 1">
+            <a-entity id="rightHand" 
+                      hand-tracking-controls="hand: right; modelStyle: mesh"
+                      laser-controls="hand: right"
+                      raycaster="objects: .clickable; far: 2"
+                      line="color: yellow; opacity: 0.5">
             </a-entity>
         </a-entity>
 
 
-        <a-entity laser-controls="hand: right" 
-                  raycaster="objects: .clickable; far: 5"
-                  line="color: red; opacity: 0.75">
+        <a-entity position="0 1.5 -1" rotation="0 0 0">
+            <a-box class="clickable" position="-0.5 0 0" width="0.3" height="0.3" depth="0.1" color="red"
+                   animation__click="property: scale; startEvents: click; from: 0.8 0.8 0.8; to: 1 1 1; dur: 150">
+                   <a-text value="RED" align="center" z-offset="0.06"></a-text>
+            </a-box>
+            
+            <a-box class="clickable" position="0 0 0" width="0.3" height="0.3" depth="0.1" color="green"
+                   animation__click="property: scale; startEvents: click; from: 0.8 0.8 0.8; to: 1 1 1; dur: 150">
+                   <a-text value="GREEN" align="center" z-offset="0.06"></a-text>
+            </a-box>
+
+            <a-box class="clickable" position="0.5 0 0" width="0.3" height="0.3" depth="0.1" color="blue"
+                   animation__click="property: scale; startEvents: click; from: 0.8 0.8 0.8; to: 1 1 1; dur: 150">
+                   <a-text value="BLUE" align="center" z-offset="0.06"></a-text>
+            </a-box>
         </a-entity>
 
-        <a-entity laser-controls="hand: left" 
-                  raycaster="objects: .clickable; far: 5"
-                  line="color: red; opacity: 0.75">
-        </a-entity>
-
-
-        <a-entity id="shapes-container"></a-entity>
+        <a-box position="-2 0.5 -3" color="orange"></a-box>
+        <a-sphere position="2 1 -4" radius="0.5" color="purple"></a-sphere>
+        <a-cylinder position="0 2 -6" radius="0.5" height="4" color="white"></a-cylinder>
 
     </a-scene>
 
     <script>
-        let createdShapes = [];
-        let container = document.querySelector('#shapes-container');
-
-        // دالة إضافة الأشكال
-        function addShape(type) {
-            let newShape = document.createElement('a-' + type);
-
-            // جعل الشكل قابلاً للتفاعل (يجب أن يحمل كلاس clickable ليتفاعل مع الليزر)
-            newShape.setAttribute('class', 'clickable');
-            
-            // موقع عشوائي أبعد قليلاً من لوحة التحكم
-            let x = (Math.random() * 2) - 1;
-            let y = (Math.random() * 1.5) + 1;
-            let z = -2; // أمام اللاعب بمسافة مترين
-
-            newShape.setAttribute('position', `${x} ${y} ${z}`);
-            
-            // لون عشوائي
-            let randomColor = "#" + Math.floor(Math.random()*16777215).toString(16);
-            newShape.setAttribute('color', randomColor);
-
-            // إضافة خصائص التحريك (عند النظر إليها وضغط الزر/القرص)
-            // ملاحظة: لتحريك حر ومعقد نحتاج فيزياء، لكن للتبسيط هنا نستخدم التفاعل البسيط
-            newShape.addEventListener('click', function() {
-                // عند النقر على الشكل، يغير لونه كدليل على التفاعل
-                this.setAttribute('material', 'opacity', 0.5);
-                setTimeout(() => { this.setAttribute('material', 'opacity', 1.0); }, 500);
+        // كود بسيط لتغيير لون السماء عند ضغط الأزرار للتأكد من التفاعل
+        document.querySelectorAll('.clickable').forEach(el => {
+            el.addEventListener('click', function() {
+                // عند "النقر" أو "القرص" على المكعب
+                let color = this.getAttribute('color');
+                console.log("Clicked color: " + color);
+                // تغيير لون البيئة كدليل بصري
+                document.querySelector('a-scene').setAttribute('background', 'color', color);
             });
-            
-            if (type === 'sphere') newShape.setAttribute('radius', '0.3');
-            if (type === 'box') newShape.setAttribute('scale', '0.5 0.5 0.5');
-
-            container.appendChild(newShape);
-            createdShapes.push(newShape);
-        }
-
-        // دالة الحذف
-        function clearLast() {
-            if (createdShapes.length > 0) {
-                let lastShape = createdShapes.pop();
-                lastShape.parentNode.removeChild(lastShape);
-            }
-        }
+        });
     </script>
 </body>
 </html>
