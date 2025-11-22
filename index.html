@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>صفحة VR تفاعلية بسيطة</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://unpkg.com/super-hands/dist/super-hands.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-physics-system@v4.2.2/dist/aframe-physics-system.min.js"></script>
+    <script src="https://unpkg.com/aframe-event-set-component@^4.0.0/dist/aframe-event-set-component.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component/dist/aframe-environment-component.min.js"></script>
+
+
+    <style>
+        /* تنسيق بسيط لأزرار التحكم على الشاشة العادية */
+        #ui-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 999;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        button { cursor: pointer; padding: 5px 10px; margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui-controls">
+        <button onclick="addShape('box')">إضافة مكعب</button>
+        <button onclick="addShape('sphere')">إضافة كرة</button>
+        <button onclick="clearLast()">حذف آخر عنصر</button>
+        <p style="color:white; font-size: 12px;">للرسم في VR: اضغط الزناد (Trigger) وحرك يدك.</p>
+    </div>
+
+    <a-scene physics="gravity: 0; debug: false">
+        
+        <a-assets>
+            <img id="skyTexture" crossorigin="anonymous" src="https://cdn.aframe.io/360-image-gallery-boilerplate/img/city.jpg">
+            <a-mixin id="brush" material="color: red; shader: flat" geometry="primitive: sphere; radius: 0.02"></a-mixin>
+        </a-assets>
+
+        <a-sky src="#skyTexture" rotation="0 -130 0"></a-sky>
+
+        <a-entity id="leftHand" 
+                  hand-controls="hand: left; handModelStyle: lowPoly; color: #ffcccc"
+                  sphere-collider="objects: .grabbable"
+                  super-hands="colliderEvent: collisions; colliderEventProperty: els; colliderEndEvent: collisions; colliderEndEventProperty: clearedEls;">
+        </a-entity>
+
+        <a-entity id="rightHand" 
+                  hand-controls="hand: right; handModelStyle: lowPoly; color: #ffcccc"
+                  drawing-brush>
+        </a-entity>
+
+        <a-entity camera look-controls wasd-controls position="0 1.6 0">
+            <a-entity cursor="rayOrigin: mouse"
+                      raycaster="objects: .grabbable"
+                      position="0 0 -1"
+                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                      material="color: black; shader: flat">
+            </a-entity>
+        </a-entity>
+
+        <a-box class="grabbable" hoverable grabbable stretchable dynamic-body position="-1 1.5 -3" rotation="0 45 0" color="#4CC3D9" shadow></a-box>
+        <a-sphere class="grabbable" hoverable grabbable stretchable dynamic-body position="0 1.25 -4" radius="0.5" color="#EF2D5E" shadow></a-sphere>
+        <a-cylinder class="grabbable" hoverable grabbable stretchable dynamic-body position="1 1.75 -3" radius="0.3" height="1.5" color="#FFC65D" shadow></a-cylinder>
+
+        <a-entity light="type: ambient; color: #BBB"></a-entity>
+        <a-entity light="type: directional; color: #FFF; intensity: 0.6" position="-0.5 1 1"></a-entity>
+
+    </a-scene>
+
+    <script>
+        let createdShapes = [];
+
+        // دالة لإضافة أشكال جديدة عشوائياً
+        function addShape(type) {
+            let scene = document.querySelector('a-scene');
+            let newShape = document.createElement('a-' + type);
+
+            // إعداد خصائص الشكل ليكون قابلاً للتفاعل
+            newShape.setAttribute('class', 'grabbable');
+            newShape.setAttribute('hoverable', '');
+            newShape.setAttribute('grabbable', '');
+            newShape.setAttribute('stretchable', '');
+            newShape.setAttribute('dynamic-body', 'shape: box; mass: 2'); // إضافة فيزياء
+
+            // موقع عشوائي أمام المستخدم
+            let x = (Math.random() * 4) - 2;
+            let y = (Math.random() * 2) + 1;
+            let z = -(Math.random() * 3) - 2;
+            newShape.setAttribute('position', `${x} ${y} ${z}`);
+
+            // لون عشوائي
+            let randomColor = "#" + Math.floor(Math.random()*16777215).toString(16);
+            newShape.setAttribute('color', randomColor);
+            
+            if (type === 'sphere') newShape.setAttribute('radius', '0.4');
+            if (type === 'box') newShape.setAttribute('scale', '0.7 0.7 0.7');
+
+            scene.appendChild(newShape);
+            createdShapes.push(newShape);
+        }
+
+        // دالة لحذف آخر عنصر تمت إضافته
+        function clearLast() {
+            if (createdShapes.length > 0) {
+                let lastShape = createdShapes.pop();
+                lastShape.parentNode.removeChild(lastShape);
+            }
+        }
+
+        // مكون بسيط جداً للرسم (Drawing Component)
+        // هذا المكون يراقب ضغطة الزناد في اليد اليمنى ويترك أثراً من الكرات الصغيرة
+        AFRAME.registerComponent('drawing-brush', {
+            init: function () {
+                this.isDrawing = false;
+                // الاستماع لحدث الضغط على الزناد (triggerdown)
+                this.el.addEventListener('triggerdown', () => { this.isDrawing = true; });
+                // الاستماع لحدث رفع الأصبع عن الزناد (triggerup)
+                this.el.addEventListener('triggerup', () => { this.isDrawing = false; });
+            },
+            tick: function () {
+                // يتم تنفيذ هذا الكود في كل إطار (Frame)
+                if (this.isDrawing) {
+                    // إنشاء نقطة رسم
+                    let brush = document.createElement('a-entity');
+                    // استخدام الـ mixin المحدد مسبقاً (كرة حمراء صغيرة)
+                    brush.setAttribute('mixin', 'brush'); 
+                    // نسخ موقع اليد الحالي
+                    brush.setAttribute('position', this.el.getAttribute('position'));
+                    brush.setAttribute('rotation', this.el.getAttribute('rotation'));
+                    // إضافة النقطة للمشهد
+                    this.el.sceneEl.appendChild(brush);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
